@@ -95,6 +95,10 @@ let cutInTimer = null;
 let galleryIndex = 0;
 let galleryRequestId = 0;
 let galleryPreloadQueued = false;
+let lastChoiceActivationAt = 0;
+
+const CHOICE_POINTER_ACTIVATION_SUPPRESS_MS = 420;
+const CHOICE_ACTIVATION_GUARD_MS = 120;
 
 const urlParams = new URLSearchParams(window.location.search);
 const DEBUG_MODE = urlParams.has("debug");
@@ -1028,6 +1032,12 @@ function scheduleIdleTask(callback, delay = 600) {
   window.setTimeout(callback, delay);
 }
 
+function scheduleDelayedIdleTask(callback, delay = 600) {
+  window.setTimeout(() => {
+    scheduleIdleTask(callback, 0);
+  }, delay);
+}
+
 function restartClassAnimation(element, className) {
   if (!element) {
     return;
@@ -1167,7 +1177,7 @@ function handleChoiceButtonClick(hand) {
     return;
   }
 
-  const button = [...choiceButtons].find((choiceButton) => choiceButton.dataset.hand === hand);
+  const button = choiceButtonForHand(hand);
   if (isChoiceInputLocked(button)) {
     return;
   }
@@ -3802,53 +3812,62 @@ muteButton.addEventListener("click", () => {
 choiceButtons.forEach((button) => {
   const isLocked = () => isChoiceInputLocked(button);
 
-  button.addEventListener("pointerdown", (event) => {
+  function cancelInputEvent(event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function activateFromPointer(event) {
+    cancelInputEvent(event);
+
     if (isLocked()) {
-      event.preventDefault();
-      event.stopPropagation();
+      clearChoicePressState(button);
       return;
     }
 
+    const now = performance.now();
+    if (now - lastChoiceActivationAt < CHOICE_ACTIVATION_GUARD_MS) {
+      return;
+    }
+
+    lastChoiceActivationAt = now;
     button.classList.add("is-pressing");
-  });
+    handleChoiceButtonClick(button.dataset.hand);
+  }
+
+  button.addEventListener("pointerdown", activateFromPointer);
 
   button.addEventListener("pointerup", (event) => {
-    if (isLocked()) {
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
-
+    cancelInputEvent(event);
     clearChoicePressState(button);
   });
 
   button.addEventListener("pointercancel", (event) => {
-    if (isLocked()) {
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
-
+    cancelInputEvent(event);
     clearChoicePressState(button);
   });
 
   button.addEventListener("pointerleave", (event) => {
-    if (isLocked()) {
-      event.preventDefault();
-      event.stopPropagation();
-      return;
+    if (event.buttons) {
+      cancelInputEvent(event);
     }
 
     clearChoicePressState(button);
   });
 
   button.addEventListener("click", (event) => {
-    if (isLocked()) {
-      event.preventDefault();
-      event.stopPropagation();
+    const now = performance.now();
+    if (now - lastChoiceActivationAt < CHOICE_POINTER_ACTIVATION_SUPPRESS_MS) {
+      cancelInputEvent(event);
       return;
     }
 
+    if (isLocked()) {
+      cancelInputEvent(event);
+      return;
+    }
+
+    lastChoiceActivationAt = now;
     handleChoiceButtonClick(button.dataset.hand);
   });
 });
@@ -3870,10 +3889,10 @@ document.querySelectorAll(".choice-hand-image").forEach((image) => {
 useFallbackCharacter();
 applyPerformanceModeClass();
 preloadStartupAssets();
-scheduleIdleTask(() => {
+scheduleDelayedIdleTask(() => {
   preloadCharacterImages();
 }, LOW_POWER_MODE ? 1200 : 700);
-scheduleIdleTask(() => {
+scheduleDelayedIdleTask(() => {
   if (!LOW_POWER_MODE) {
     preloadSceneImages();
   }
@@ -3881,7 +3900,7 @@ scheduleIdleTask(() => {
 setCharacter("normal");
 AudioManager.loadMutedPreference();
 if (!LOW_POWER_MODE) {
-  scheduleIdleTask(() => {
+  scheduleDelayedIdleTask(() => {
     AudioManager.initAudio();
   }, 1800);
 }

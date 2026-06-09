@@ -225,3 +225,12 @@ Main changes:
 - Reduces only expensive continuous CSS effects in lightweight mode, such as always-on glow/drop-shadow/mix-blend pressure.
 
 The main win/lose/draw, chance, final, hand pop, and CRT direction are intentionally preserved.
+
+
+## Tap Responsiveness Fix 2026-06-09
+
+This build keeps the visual arcade style, but makes the bottom rock-paper-scissors buttons respond on `pointerdown` instead of waiting for the delayed compatibility `click` event on touch devices.
+
+This reduces occasional sluggishness on low-end Android phones when the player taps the three choice buttons repeatedly at a steady rhythm.
+
+The patch also suppresses duplicate delayed click handling after pointer input and lightly reduces disabled-button filter cost in Lite Performance mode.
