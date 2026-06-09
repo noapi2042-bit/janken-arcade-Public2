@@ -234,3 +234,19 @@ This build keeps the visual arcade style, but makes the bottom rock-paper-scisso
 This reduces occasional sluggishness on low-end Android phones when the player taps the three choice buttons repeatedly at a steady rhythm.
 
 The patch also suppresses duplicate delayed click handling after pointer input and lightly reduces disabled-button filter cost in Lite Performance mode.
+
+## Janken Call Lag Fix 2026-06-09
+
+This build keeps the arcade animation direction but reduces lag around the Janken call on lower-end phones.
+
+Changes:
+
+- Shortened the `ジャン` / `ケン` / `ポン` call timing only in Lite Performance mode.
+- In Lite Performance mode, the Janken call uses the lightweight WebAudio fallback instead of repeatedly restarting the MP3 one-shot sound.
+- Added a short input buffer while a round is resolving, so a tap that lands just before the buttons are re-enabled can be used for the next round instead of feeling ignored.
+- Kept `?debug`, existing animations, Chance Time, Final Janken, Gallery, and the single-file `script.js` structure.
+
+Testing note:
+
+- On low-end Android devices, test both the normal URL and `?lite=1`.
+- If the Janken call still feels late, check the file dimensions and file size of `character_*.png` and `janken_*.png`. Oversized PNGs can still cause decode and repaint pressure even when the JavaScript is optimized.

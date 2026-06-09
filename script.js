@@ -96,9 +96,13 @@ let galleryIndex = 0;
 let galleryRequestId = 0;
 let galleryPreloadQueued = false;
 let lastChoiceActivationAt = 0;
+let pendingChoiceHand = null;
+let pendingChoiceAt = 0;
+let pendingChoiceTimer = null;
 
 const CHOICE_POINTER_ACTIVATION_SUPPRESS_MS = 420;
 const CHOICE_ACTIVATION_GUARD_MS = 120;
+const CHOICE_BUFFER_MS = 900;
 
 const urlParams = new URLSearchParams(window.location.search);
 const DEBUG_MODE = urlParams.has("debug");
@@ -127,6 +131,10 @@ function detectLowPowerDevice() {
 }
 
 const LOW_POWER_MODE = detectLowPowerDevice();
+const JANKEN_CALL_STEP_MS = LOW_POWER_MODE ? 300 : 420;
+const JANKEN_REVEAL_TO_HAND_MS = LOW_POWER_MODE ? 28 : 40;
+const HAND_REVEAL_PAUSE_MS = LOW_POWER_MODE ? 90 : 150;
+const RESULT_PAUSE_SCALE = LOW_POWER_MODE ? 0.82 : 1;
 const MATCH_POINT = 10;
 const CONTINUE_SECONDS = 10;
 const DRAW_WARNING_COUNT = 5;
@@ -407,6 +415,70 @@ function applyPerformanceModeClass() {
   document.documentElement.classList.toggle("is-lite-performance", LOW_POWER_MODE);
   document.body?.classList.toggle("is-lite-performance", LOW_POWER_MODE);
   cabinet?.classList.toggle("is-lite-performance", LOW_POWER_MODE);
+}
+
+function isGameplayOverlayOpen() {
+  return Boolean(
+    (sceneOverlay && !sceneOverlay.hidden) ||
+      (endOverlay && !endOverlay.hidden) ||
+      (galleryOverlay && !galleryOverlay.hidden)
+  );
+}
+
+function clearPendingChoice() {
+  pendingChoiceHand = null;
+  pendingChoiceAt = 0;
+  if (pendingChoiceTimer) {
+    window.clearTimeout(pendingChoiceTimer);
+    pendingChoiceTimer = null;
+  }
+}
+
+function canBufferChoiceInput() {
+  return Boolean(state.started && state.busy && !state.ended && !isGameplayOverlayOpen());
+}
+
+function bufferChoiceInput(hand) {
+  if (!hand || !hands[hand] || !canBufferChoiceInput()) {
+    return false;
+  }
+
+  pendingChoiceHand = hand;
+  pendingChoiceAt = performance.now();
+
+  if (pendingChoiceTimer) {
+    window.clearTimeout(pendingChoiceTimer);
+  }
+
+  pendingChoiceTimer = window.setTimeout(() => {
+    clearPendingChoice();
+  }, CHOICE_BUFFER_MS);
+
+  return true;
+}
+
+function consumePendingChoice() {
+  if (!pendingChoiceHand) {
+    return false;
+  }
+
+  const hand = pendingChoiceHand;
+  const queuedAt = pendingChoiceAt;
+  clearPendingChoice();
+
+  if (performance.now() - queuedAt > CHOICE_BUFFER_MS) {
+    return false;
+  }
+
+  const button = choiceButtonForHand(hand);
+  if (isChoiceInputLocked(button)) {
+    return false;
+  }
+
+  window.requestAnimationFrame(() => {
+    handleChoiceButtonClick(hand);
+  });
+  return true;
 }
 
 const KEYBOARD_HAND_MAP = {
@@ -691,14 +763,16 @@ const AudioManager = (() => {
 
     try {
       initAudio();
-      initJankenCallSfx();
-      jankenCallSfxPool.forEach((sfx) => {
-        try {
-          sfx.load();
-        } catch (error) {
-          // Warming up audio is optional.
-        }
-      });
+      if (!LOW_POWER_MODE) {
+        initJankenCallSfx();
+        jankenCallSfxPool.forEach((sfx) => {
+          try {
+            sfx.load();
+          } catch (error) {
+            // Warming up audio is optional.
+          }
+        });
+      }
 
       if (!LOW_POWER_MODE && !cutinSfx) {
         cutinSfx = createCutinSfx();
@@ -904,6 +978,12 @@ const AudioManager = (() => {
       }
 
       initAudio();
+
+      if (LOW_POWER_MODE) {
+        playSound(fallbackType);
+        return;
+      }
+
       initJankenCallSfx();
 
       if (jankenCallSfxFailed || !jankenCallSfxPool.length) {
@@ -1132,7 +1212,9 @@ function triggerCinematicCutIn(type) {
 function setButtonsEnabled(enabled) {
   choiceButtonGroup?.classList.toggle("is-input-locked", !enabled);
   choiceButtons.forEach((button) => {
-    button.disabled = !enabled;
+    const shouldDisableElement = !enabled && !state.started;
+    button.disabled = shouldDisableElement;
+    button.setAttribute("aria-disabled", String(!enabled));
     if (!enabled) {
       button.classList.remove("is-pressing");
     }
@@ -3256,6 +3338,7 @@ function cancelEndFlow() {
 }
 
 function resetScore() {
+  clearPendingChoice();
   clearCinematicCutIn();
   state.win = 0;
   state.lose = 0;
@@ -3276,6 +3359,7 @@ function resetScore() {
 }
 
 function cleanupForTitle() {
+  clearPendingChoice();
   stopCountdown();
   stopChanceMessages();
   clearCinematicCutIn();
@@ -3638,6 +3722,7 @@ async function playRound(player) {
     }
   };
 
+  clearPendingChoice();
   state.busy = true;
   const flowId = state.flowId;
   state.finalConfirmHand = null;
@@ -3662,7 +3747,7 @@ async function playRound(player) {
     showMessage(call, "is-calling");
     AudioManager.playJankenCallSfx(callSound);
     playCharacterBeat(beatClass);
-    await wait(420);
+    await wait(JANKEN_CALL_STEP_MS);
     if (flowId !== state.flowId) {
       endPlayRoundTimer();
       return;
@@ -3672,7 +3757,7 @@ async function playRound(player) {
   showMessage(revealCall, "is-calling");
   AudioManager.playJankenCallSfx("call3");
   playCharacterBeat("is-beat-3");
-  await wait(40);
+  await wait(JANKEN_REVEAL_TO_HAND_MS);
   if (flowId !== state.flowId) {
     endPlayRoundTimer();
     return;
@@ -3681,7 +3766,7 @@ async function playRound(player) {
   renderHand(playerHand, player);
   renderHand(cpuHand, cpu);
   AudioManager.playSound("handPop");
-  await wait(150);
+  await wait(HAND_REVEAL_PAUSE_MS);
   if (flowId !== state.flowId) {
     endPlayRoundTimer();
     return;
@@ -3749,13 +3834,14 @@ async function playRound(player) {
   state.nextCallMode = result === "draw" ? "draw" : "normal";
 
   const roundEndsMatch = scoreChange.finalResolved || state.win >= MATCH_POINT || state.lose >= MATCH_POINT;
-  const resultPause = roundEndsMatch
+  const resultPauseBase = roundEndsMatch
     ? 2200
     : scoreChange.chanceStarted
       ? 2000
       : scoreChange.warningStarted
         ? 1700
         : 1350;
+  const resultPause = Math.round(resultPauseBase * RESULT_PAUSE_SCALE);
 
   await wait(resultPause);
 
@@ -3765,6 +3851,7 @@ async function playRound(player) {
   }
 
   if (roundEndsMatch) {
+    clearPendingChoice();
     endGame(scoreChange.finalResolved ? scoreChange.finalResult : state.win >= MATCH_POINT ? "win" : "lose");
     endPlayRoundTimer();
     return;
@@ -3774,8 +3861,12 @@ async function playRound(player) {
   state.finalConfirmHand = null;
   setSelectedButton();
   setButtonsEnabled(true);
-  updateCharacterByScore();
-  showNextInputPrompt();
+
+  if (!consumePendingChoice()) {
+    updateCharacterByScore();
+    showNextInputPrompt();
+  }
+
   endPlayRoundTimer();
 }
 
@@ -3821,7 +3912,12 @@ choiceButtons.forEach((button) => {
     cancelInputEvent(event);
 
     if (isLocked()) {
-      clearChoicePressState(button);
+      if (bufferChoiceInput(button.dataset.hand)) {
+        button.classList.add("is-pressing");
+        window.setTimeout(() => clearChoicePressState(button), 110);
+      } else {
+        clearChoicePressState(button);
+      }
       return;
     }
 
@@ -3863,6 +3959,7 @@ choiceButtons.forEach((button) => {
     }
 
     if (isLocked()) {
+      bufferChoiceInput(button.dataset.hand);
       cancelInputEvent(event);
       return;
     }

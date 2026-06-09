@@ -1130,11 +1130,16 @@ button {
 }
 
 .choice-buttons.is-input-locked {
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .choice-buttons.is-input-locked .choice {
-  pointer-events: none;
+  pointer-events: auto;
+}
+
+.choice[aria-disabled="true"]:not(:disabled):not(.is-selected) {
+  opacity: 0.86;
+  cursor: default;
 }
 
 .choice {
@@ -3125,7 +3130,8 @@ html.is-lite-performance .choice.is-selected .choice-icon {
     0 0 10px rgba(255, 255, 180, 0.42);
 }
 
-html.is-lite-performance .choice:disabled {
+html.is-lite-performance .choice:disabled,
+html.is-lite-performance .choice[aria-disabled="true"]:not(:disabled):not(.is-selected) {
   filter: none;
   opacity: 0.74;
 }
