@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Retro Janken Arcade</title>
+    <link rel="stylesheet" href="style.css?v=20260609-stable-core1">
+  </head>
+  <body>
+    <main class="cabinet" aria-label="レトロアーケードじゃんけんゲーム">
+      <div class="cabinet-art cabinet-art-shell" aria-hidden="true"></div>
+      <div class="cabinet-art cabinet-art-rails" aria-hidden="true"></div>
+      <div class="cabinet-art cabinet-art-screws" aria-hidden="true"></div>
+      <header class="marquee">
+        <div class="marquee-lamp"></div>
+        <h1>JANKEN ARCADE</h1>
+        <div class="marquee-lamp"></div>
+      </header>
+      <button id="muteButton" class="mute-button" type="button" aria-pressed="false">SOUND ON</button>
+
+      <section class="bezel" aria-label="ゲーム画面">
+        <div class="crt">
+          <div class="scanlines"></div>
+          <button id="startButton" class="start-overlay" type="button">
+            <span>TAP START</span>
+            <strong>INSERT COIN</strong>
+            <small>10 WINS MATCH</small>
+          </button>
+          <button id="galleryButton" class="gallery-button" type="button" hidden>GALLERY</button>
+          <button id="relationResetButton" class="relation-reset-button" type="button" hidden>RESET</button>
+
+          <div id="endOverlay" class="end-overlay" hidden>
+            <p id="finalTitle" class="final-title">YOU WIN!</p>
+            <p id="finalMessage" class="final-message">CONTINUE?</p>
+            <button id="retryButton" class="retry-button" type="button">もう一度勝負</button>
+            <p class="countdown">TIME <strong id="countdown">10</strong></p>
+          </div>
+
+          <div id="sceneOverlay" class="scene-overlay" hidden>
+            <img id="sceneIllustration" class="scene-illustration" alt="シーン演出画像" hidden>
+            <div class="scene-character">
+              <img id="sceneCharacterImage" alt="CPUキャラクター演出" hidden>
+              <div id="sceneCharacterFallback" class="character-fallback" aria-hidden="true">
+                <span class="face-eyes">● ●</span>
+                <span class="face-mouth">▽</span>
+              </div>
+            </div>
+            <div class="scene-dialog-box">
+              <p id="sceneMessage" class="scene-message" aria-live="polite"></p>
+              <button id="sceneNextButton" class="scene-next-button" type="button" hidden aria-label="次へ">
+                ▼
+              </button>
+            </div>
+          </div>
+
+          <div id="galleryOverlay" class="gallery-overlay" hidden>
+            <div class="gallery-window">
+              <div class="gallery-header">
+                <strong>GALLERY MODE</strong>
+                <button id="galleryCloseButton" type="button">CLOSE</button>
+              </div>
+              <div class="gallery-preview">
+                <img id="galleryImage" alt="Gallery image" hidden>
+                <div id="galleryLocked" class="gallery-locked" hidden>LOCKED</div>
+              </div>
+              <p id="galleryProgress" class="gallery-progress"></p>
+              <p id="galleryCaption" class="gallery-caption"></p>
+              <div class="gallery-controls">
+                <button id="galleryPrevButton" type="button" aria-label="Previous gallery image">&lt;</button>
+                <span id="galleryCounter"></span>
+                <button id="galleryNextButton" type="button" aria-label="Next gallery image">&gt;</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="scoreboard" aria-label="スコア">
+            <span class="score-win">WIN <strong id="winCount">0</strong></span>
+            <span class="score-lose">LOSE <strong id="loseCount">0</strong></span>
+            <span class="score-draw">DRAW <strong id="drawCount">0</strong></span>
+          </div>
+
+          <div class="stage">
+            <div class="show-window">
+              <p id="message" class="message" aria-live="polite">TAP START</p>
+
+              <div class="character-frame">
+                <img id="characterImage" alt="CPUキャラクター" hidden>
+                <div id="characterFallback" class="character-fallback" aria-hidden="true">
+                  <span class="face-eyes">● ●</span>
+                  <span class="face-mouth">▽</span>
+                </div>
+              </div>
+
+              <p id="resultLabel" class="result-label" aria-live="polite"></p>
+            </div>
+
+            <div class="hands" aria-live="polite">
+              <div class="hand-card">
+                <span>PLAYER</span>
+                <strong id="playerHand">?</strong>
+              </div>
+              <div class="versus">VS</div>
+              <div class="hand-card">
+                <span>CPU</span>
+                <strong id="cpuHand">?</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="control-panel" aria-label="操作パネル">
+        <div class="panel-line"></div>
+        <div id="inputGuide" class="input-guide" hidden aria-hidden="true">
+          <span>好きな手を選んでね！</span>
+          <strong>▼ ▼ ▼</strong>
+        </div>
+        <div class="choice-buttons">
+          <button class="choice rock" type="button" data-hand="rock" aria-label="グー" disabled>
+            <span class="choice-icon">
+              <img src="assets/images/janken_gu.png" alt="" class="choice-hand-image">
+            </span>
+            <span>グー</span>
+          </button>
+          <button class="choice scissors" type="button" data-hand="scissors" aria-label="チョキ" disabled>
+            <span class="choice-icon">
+              <img src="assets/images/janken_choki.png" alt="" class="choice-hand-image">
+            </span>
+            <span>チョキ</span>
+          </button>
+          <button class="choice paper" type="button" data-hand="paper" aria-label="パー" disabled>
+            <span class="choice-icon">
+              <img src="assets/images/janken_pa.png" alt="" class="choice-hand-image">
+            </span>
+            <span>パー</span>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <script src="script.js?v=20260609-stable-core1"></script>
+  </body>
+</html>

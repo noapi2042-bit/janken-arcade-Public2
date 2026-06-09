@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 940" preserveAspectRatio="none">
+  <defs>
+    <linearGradient id="body" x1="0" x2="1">
+      <stop offset="0" stop-color="#ff7554" stop-opacity=".55"/>
+      <stop offset=".08" stop-color="#b41d19" stop-opacity=".34"/>
+      <stop offset=".5" stop-color="#d43125" stop-opacity=".08"/>
+      <stop offset=".9" stop-color="#7c0e0d" stop-opacity=".42"/>
+      <stop offset="1" stop-color="#260304" stop-opacity=".62"/>
+    </linearGradient>
+    <linearGradient id="edge" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffd58f" stop-opacity=".22"/>
+      <stop offset=".18" stop-color="#d42b20" stop-opacity=".1"/>
+      <stop offset=".8" stop-color="#210405" stop-opacity=".2"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".44"/>
+    </linearGradient>
+    <pattern id="scratches" width="58" height="46" patternUnits="userSpaceOnUse" patternTransform="rotate(-12)">
+      <path d="M4 8h28M38 34h16M10 42h38" fill="none" stroke="#fff0b0" stroke-opacity=".08" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="460" height="940" rx="18" fill="url(#body)"/>
+  <rect x="10" y="10" width="440" height="920" rx="14" fill="none" stroke="#fff0a8" stroke-opacity=".14" stroke-width="4"/>
+  <rect x="0" y="0" width="36" height="940" fill="url(#edge)" opacity=".9"/>
+  <rect x="424" y="0" width="36" height="940" fill="#140202" opacity=".36"/>
+  <rect width="460" height="940" fill="url(#scratches)"/>
+</svg>
