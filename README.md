@@ -207,3 +207,21 @@ The changes are limited to gameplay stability and operability:
 
 The goal of this patch is not refactoring.
 The goal is to keep the current game feel while making the game loop safer.
+
+## Lightweight Performance Fix 2026-06-09
+
+This build keeps the current arcade animation style, but adds a low-end mobile performance mode for devices where the first janken input or audio timing can feel heavy.
+
+Main changes:
+
+- Keeps the one-file `script.js` structure and keeps `?debug` debug mode.
+- Adds automatic lightweight mode for low-power devices, and manual controls:
+  - `?lite=1` or `?perf=lite` forces lightweight mode.
+  - `?full=1` or `?perf=full` forces the full visual mode.
+- Warms up the janken call sound pool during the intro so the first rock-paper-scissors button press is less likely to stall.
+- Avoids creating AudioContext at page load on low-power mode; audio is initialized after the user's start tap.
+- Disables per-character text blip sounds in lightweight mode to reduce audio-thread load and perceived sound drift.
+- Defers non-essential scene image preloading in lightweight mode so it does not compete with the first playable input.
+- Reduces only expensive continuous CSS effects in lightweight mode, such as always-on glow/drop-shadow/mix-blend pressure.
+
+The main win/lose/draw, chance, final, hand pop, and CRT direction are intentionally preserved.

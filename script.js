@@ -96,7 +96,33 @@ let galleryIndex = 0;
 let galleryRequestId = 0;
 let galleryPreloadQueued = false;
 
-const DEBUG_MODE = new URLSearchParams(window.location.search).has("debug");
+const urlParams = new URLSearchParams(window.location.search);
+const DEBUG_MODE = urlParams.has("debug");
+
+function detectLowPowerDevice() {
+  try {
+    const forcedLite = urlParams.has("lite") || urlParams.get("perf") === "lite";
+    const forcedFull = urlParams.has("full") || urlParams.get("perf") === "full";
+
+    if (forcedLite) {
+      return true;
+    }
+
+    if (forcedFull) {
+      return false;
+    }
+
+    const cores = Number(navigator.hardwareConcurrency || 0);
+    const memory = Number(navigator.deviceMemory || 0);
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+
+    return reducedMotion || (cores > 0 && cores <= 4) || (memory > 0 && memory <= 3);
+  } catch (error) {
+    return false;
+  }
+}
+
+const LOW_POWER_MODE = detectLowPowerDevice();
 const MATCH_POINT = 10;
 const CONTINUE_SECONDS = 10;
 const DRAW_WARNING_COUNT = 5;
@@ -373,6 +399,12 @@ const characterFrame = document.querySelector(".character-frame");
 const characterImage = document.querySelector("#characterImage");
 const characterFallback = document.querySelector("#characterFallback");
 
+function applyPerformanceModeClass() {
+  document.documentElement.classList.toggle("is-lite-performance", LOW_POWER_MODE);
+  document.body?.classList.toggle("is-lite-performance", LOW_POWER_MODE);
+  cabinet?.classList.toggle("is-lite-performance", LOW_POWER_MODE);
+}
+
 const KEYBOARD_HAND_MAP = {
   "1": "rock",
   g: "rock",
@@ -514,7 +546,16 @@ const AudioManager = (() => {
   let jankenCallSfxFailed = false;
   let currentBgmMode = null;
   let lastCutinSfxAt = 0;
+  let gameplayPrepared = false;
   let muted = false;
+
+  function loadMutedPreference() {
+    try {
+      muted = window.localStorage.getItem(storageKey) === "true";
+    } catch (error) {
+      muted = false;
+    }
+  }
 
   function initAudio() {
     try {
@@ -522,7 +563,7 @@ const AudioManager = (() => {
         return;
       }
 
-      muted = window.localStorage.getItem(storageKey) === "true";
+      loadMutedPreference();
 
       if (!normalBgm) {
         normalBgm = createBgm("normal");
@@ -620,7 +661,8 @@ const AudioManager = (() => {
     }
 
     try {
-      jankenCallSfxPool = Array.from({ length: 3 }, () => {
+      const poolSize = LOW_POWER_MODE ? 2 : 3;
+      jankenCallSfxPool = Array.from({ length: poolSize }, () => {
         const audio = createOneShotSfx(sfxPaths.jankenCall, 0.68);
         audio.addEventListener(
           "error",
@@ -633,6 +675,37 @@ const AudioManager = (() => {
       });
     } catch (error) {
       jankenCallSfxFailed = true;
+    }
+  }
+
+  function prepareForGameplay() {
+    if (gameplayPrepared) {
+      return;
+    }
+
+    gameplayPrepared = true;
+
+    try {
+      initAudio();
+      initJankenCallSfx();
+      jankenCallSfxPool.forEach((sfx) => {
+        try {
+          sfx.load();
+        } catch (error) {
+          // Warming up audio is optional.
+        }
+      });
+
+      if (!LOW_POWER_MODE && !cutinSfx) {
+        cutinSfx = createCutinSfx();
+        try {
+          cutinSfx.load();
+        } catch (error) {
+          // Cut-in sound can still be created later on demand.
+        }
+      }
+    } catch (error) {
+      // Audio warmup must not block the game.
     }
   }
 
@@ -784,7 +857,7 @@ const AudioManager = (() => {
 
   function playSound(type) {
     try {
-      if (muted) {
+      if (muted || (LOW_POWER_MODE && type === "textBlip")) {
         return;
       }
 
@@ -926,6 +999,8 @@ const AudioManager = (() => {
 
   return {
     initAudio,
+    loadMutedPreference,
+    prepareForGameplay,
     playBgm,
     switchBgm,
     stopBgm,
@@ -3513,8 +3588,9 @@ async function startGame() {
 
   AudioManager.initAudio();
   AudioManager.playSound("start");
+  AudioManager.prepareForGameplay();
 
-  await Promise.race([startupAssetsReady || preloadStartupAssets(), wait(400)]);
+  await Promise.race([startupAssetsReady || preloadStartupAssets(), wait(LOW_POWER_MODE ? 650 : 400)]);
   await wait(60);
 
   if (flowId !== state.flowId) {
@@ -3792,13 +3868,23 @@ document.querySelectorAll(".choice-hand-image").forEach((image) => {
 });
 
 useFallbackCharacter();
+applyPerformanceModeClass();
 preloadStartupAssets();
 scheduleIdleTask(() => {
   preloadCharacterImages();
-  preloadSceneImages();
-}, 700);
+}, LOW_POWER_MODE ? 1200 : 700);
+scheduleIdleTask(() => {
+  if (!LOW_POWER_MODE) {
+    preloadSceneImages();
+  }
+}, LOW_POWER_MODE ? 3500 : 1400);
 setCharacter("normal");
-AudioManager.initAudio();
+AudioManager.loadMutedPreference();
+if (!LOW_POWER_MODE) {
+  scheduleIdleTask(() => {
+    AudioManager.initAudio();
+  }, 1800);
+}
 AudioManager.updateMuteButton();
 if (galleryButton) {
   galleryButton.hidden = true;

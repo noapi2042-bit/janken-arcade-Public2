@@ -3088,3 +3088,71 @@ button,
     grid-template-columns: minmax(0, 1fr) 46px minmax(0, 1fr);
   }
 }
+
+/* Low-end mobile performance mode
+   Added for devices where the full arcade rendering can feel heavy.
+   The main animation direction is kept, but expensive continuous effects and
+   audio-synced repaint pressure are reduced. Force with ?lite=1, disable with ?full=1. */
+html.is-lite-performance .scanlines {
+  opacity: 0.58;
+  mix-blend-mode: normal;
+}
+
+html.is-lite-performance .cabinet::after {
+  opacity: 0.28;
+  mix-blend-mode: normal;
+}
+
+html.is-lite-performance .character-frame,
+html.is-lite-performance .character-frame img,
+html.is-lite-performance .message,
+html.is-lite-performance .result-label,
+html.is-lite-performance .hand-result-image {
+  will-change: auto;
+}
+
+html.is-lite-performance .choice.is-selected {
+  animation: button-press-pop 0.48s cubic-bezier(0.2, 0.9, 0.25, 1.2) both;
+}
+
+html.is-lite-performance .choice.is-selected .choice-icon {
+  box-shadow:
+    inset -4px -6px 0 rgba(0, 0, 0, 0.2),
+    0 2px 0 rgba(0, 0, 0, 0.42),
+    0 0 10px rgba(255, 255, 180, 0.42);
+}
+
+html.is-lite-performance .hand-result-image {
+  filter: drop-shadow(0 0 8px rgba(255, 255, 160, 0.42));
+}
+
+html.is-lite-performance .choice-hand-image,
+html.is-lite-performance .scene-character,
+html.is-lite-performance .gallery-preview img {
+  filter: none;
+}
+
+html.is-lite-performance .input-guide {
+  animation-duration: 1.6s;
+}
+
+html.is-lite-performance .cabinet.is-final-janken .show-window::before {
+  animation-duration: 1.2s;
+}
+
+html.is-lite-performance .cabinet.cutin-psych .show-window::before,
+html.is-lite-performance .cabinet.cutin-chance .show-window::before,
+html.is-lite-performance .cabinet.cutin-final .show-window::before {
+  opacity: 0.82;
+}
+
+html.is-lite-performance .cabinet.cutin-psych .show-window::after,
+html.is-lite-performance .cabinet.cutin-chance .show-window::after,
+html.is-lite-performance .cabinet.cutin-final .show-window::after {
+  opacity: 0.62;
+}
+
+html.is-lite-performance .end-win .final-title,
+html.is-lite-performance .end-lose .final-title {
+  animation-iteration-count: 4;
+}
